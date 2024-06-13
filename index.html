@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Management</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        nav {
+            margin-bottom: 20px;
+        }
+        nav button {
+            margin-right: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <button onclick="showNews()">News</button>
+</nav>
+
+<div id="content">
+    <!-- Dynamic content will be loaded here -->
+</div>
+
+<script type="module">
+    import queries from './queries.js'; // Ensure the path is correct
+
+    async function fetchNews() {
+        const response = await fetch('http://localhost:4000/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: queries.newsQuery })
+        });
+
+        const result = await response.json();
+        return result.data.news;
+    }
+
+    async function fetchNewsById() {
+        const newsId = document.getElementById('newsIdInput').value;
+
+        const response = await fetch('http://localhost:4000/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: queries.newsByIdQuery,
+                variables: { id: newsId }
+            })
+        });
+
+        const result = await response.json();
+        const newsItem = result.data.newsById;
+
+        renderNewsDetails(newsItem);
+    }
+
+    async function fetchNewsByName() {
+        const newsName = document.getElementById('newsNameInput').value;
+
+        const response = await fetch('http://localhost:4000/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: queries.newsByNameQuery,
+                variables: { name: newsName }
+            })
+        });
+
+        const result = await response.json();
+        const newsItem = result.data.newsByName;
+
+        renderNewsDetails(newsItem);
+    }
+
+    async function addNews(event) {
+        event.preventDefault();
+
+        const name = document.getElementById('newsName').value;
+        let authorName = document.getElementById('newsAuthorName').value;
+        let authorSurname = document.getElementById('newsAuthorSurname').value;
+        const content = document.getElementById('newsContent').value;
+        const date = document.getElementById('newsDate').value;
+
+        if (!authorName) {
+            authorName = "No Name";
+        }
+
+        if (!authorSurname) {
+            authorSurname = "No Surname";
+        }
+
+        const response = await fetch('http://localhost:4000/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: queries.addNewsMutation,
+                variables: {
+                    news: { name, authorName, authorSurname, content, date }
+                }
+            })
+        });
+
+        const result = await response.json();
+        const newNews = result.data.addNews;
+
+        renderNews(await fetchNews());
+        renderNewsDetails(newNews);
+    }
+
+    async function deleteNewsById() {
+        const newsId = document.getElementById('deleteNewsIdInput').value;
+
+        const response = await fetch('http://localhost:4000/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: queries.deleteNewsMutation,
+                variables: { id: newsId }
+            })
+        });
+
+        const result = await response.json();
+        const remainingNews = result.data.deleteNews;
+
+        renderNews(remainingNews);
+        document.getElementById('newsDetailsTable').querySelector('tbody').innerHTML = '';
+    }
+
+    async function updateNews(event) {
+        event.preventDefault();
+
+        const newsId = document.getElementById('updateNewsId').value;
+        const name = document.getElementById('updateNewsName').value;
+        const authorName = document.getElementById('updateNewsAuthorName').value;
+        const authorSurname = document.getElementById('updateNewsAuthorSurname').value;
+        const content = document.getElementById('updateNewsContent').value;
+        const date = document.getElementById('updateNewsDate').value;
+
+        const response = await fetch('http://localhost:4000/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: queries.updateNewsMutation,
+                variables: {
+                    id: newsId,
+                    news: { name, authorName, authorSurname, content, date }
+                }
+            })
+        });
+
+        const result = await response.json();
+        const updatedNews = result.data.updateNews;
+
+        renderNews(await fetchNews());
+        renderNewsDetails(updatedNews);
+    }
+
+    async function addAuthor(event) {
+        event.preventDefault();
+
+        const newsId = document.getElementById('addAuthorNewsId').value;
+        const authorName = document.getElementById('addAuthorName').value;
+        const authorSurname = document.getElementById('addAuthorSurname').value;
+
+        const response = await fetch('http://localhost:4000/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: queries.addAuthorMutation,
+                variables: {
+                    id: newsId,
+                    authorName: authorName,
+                    authorSurname: authorSurname
+                }
+            })
+        });
+
+        const result = await response.json();
+        const updatedNews = result.data.addAuthor;
+
+        renderNews(await fetchNews());
+        renderNewsDetails(updatedNews);
+    }
+
+    async function deleteDate(event) {
+        event.preventDefault();
+
+        const newsId = document.getElementById('deleteDateNewsId').value;
+
+        const response = await fetch('http://localhost:4000/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: queries.deleteDateMutation,
+                variables: { id: newsId }
+            })
+        });
+
+        const result = await response.json();
+        const updatedNews = result.data.deleteDate;
+
+        renderNews(await fetchNews());
+        renderNewsDetails(updatedNews);
+    }
+
+    function renderNews(news) {
+        const tableBody = document.getElementById('newsTable').querySelector('tbody');
+        tableBody.innerHTML = ''; // Clear any existing rows
+
+        news.forEach(newsItem => {
+            const row = document.createElement('tr');
+            const idCell = document.createElement('td');
+            const nameCell = document.createElement('td');
+            const authorNameCell = document.createElement('td');
+            const authorSurnameCell = document.createElement('td');
+            const contentCell = document.createElement('td');
+            const dateCell = document.createElement('td');
+
+            idCell.textContent = newsItem.id;
+            nameCell.textContent = newsItem.name;
+            authorNameCell.textContent = newsItem.authorName;
+            authorSurnameCell.textContent = newsItem.authorSurname;
+            contentCell.textContent = newsItem.content;
+            dateCell.textContent = newsItem.date;
+
+            row.appendChild(idCell);
+            row.appendChild(nameCell);
+            row.appendChild(authorNameCell);
+            row.appendChild(authorSurnameCell);
+            row.appendChild(contentCell);
+            row.appendChild(dateCell);
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    function renderNewsDetails(newsItem) {
+        const newsDetailsTableBody = document.getElementById('newsDetailsTable').querySelector('tbody');
+        newsDetailsTableBody.innerHTML = ''; // Clear any existing rows
+
+        const row = document.createElement('tr');
+        const idCell = document.createElement('td');
+        const nameCell = document.createElement('td');
+        const authorNameCell = document.createElement('td');
+        const authorSurnameCell = document.createElement('td');
+        const contentCell = document.createElement('td');
+        const dateCell = document.createElement('td');
+        const optionsCell = document.createElement('td');
+
+        idCell.textContent = newsItem.id;
+        nameCell.textContent = newsItem.name;
+        authorNameCell.textContent = newsItem.authorName;
+        authorSurnameCell.textContent = newsItem.authorSurname;
+        contentCell.textContent = newsItem.content;
+        dateCell.textContent = newsItem.date;
+
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.onclick = () => deleteNewsById(newsItem.id);
+
+        const updateButton = document.createElement('button');
+        updateButton.textContent = 'Update';
+        updateButton.onclick = () => showUpdateForm(newsItem);
+
+        const addAuthorButton = document.createElement('button');
+        addAuthorButton.textContent = 'Add Author';
+        addAuthorButton.onclick = () => showAddAuthorForm(newsItem);
+
+        const deleteDateButton = document.createElement('button');
+        deleteDateButton.textContent = 'Delete Date';
+        deleteDateButton.onclick = () => showDeleteDateForm(newsItem);
+
+        optionsCell.appendChild(deleteButton);
+        optionsCell.appendChild(updateButton);
+        optionsCell.appendChild(addAuthorButton);
+        optionsCell.appendChild(deleteDateButton);
+
+        row.appendChild(idCell);
+        row.appendChild(nameCell);
+        row.appendChild(authorNameCell);
+        row.appendChild(authorSurnameCell);
+        row.appendChild(contentCell);
+        row.appendChild(dateCell);
+        row.appendChild(optionsCell);
+
+        newsDetailsTableBody.appendChild(row);
+    }
+
+    function showUpdateForm(newsItem) {
+        const formHtml = `
+            <form id="updateNewsForm">
+                <input type="hidden" id="updateNewsId" value="${newsItem.id}">
+                <label for="updateNewsName">Name:</label>
+                <input type="text" id="updateNewsName" name="name" value="${newsItem.name}" required>
+                <br>
+                <label for="updateNewsAuthorName">Author Name:</label>
+                <input type="text" id="updateNewsAuthorName" name="authorName" value="${newsItem.authorName}" required>
+                <br>
+                <label for="updateNewsAuthorSurname">Author Surname:</label>
+                <input type="text" id="updateNewsAuthorSurname" name="authorSurname" value="${newsItem.authorSurname}" required>
+                <br>
+                <label for="updateNewsContent">Content:</label>
+                <input type="text" id="updateNewsContent" name="content" value="${newsItem.content}" required>
+                <br>
+                <label for="updateNewsDate">Date:</label>
+                <input type="text" id="updateNewsDate" name="date" value="${newsItem.date}" required>
+                <br>
+                <button type="submit">Submit</button>
+            </form>
+        `;
+        const formContainer = document.createElement('div');
+        formContainer.innerHTML = formHtml;
+        document.getElementById('content').appendChild(formContainer);
+
+        document.getElementById('updateNewsForm').addEventListener('submit', updateNews);
+    }
+
+    function showAddAuthorForm(newsItem) {
+        const formHtml = `
+            <form id="addAuthorForm">
+                <input type="hidden" id="addAuthorNewsId" value="${newsItem.id}">
+                <label for="addAuthorName">Author Name:</label>
+                <input type="text" id="addAuthorName" name="authorName">
+                <br>
+                <label for="addAuthorSurname">Author Surname:</label>
+                <input type="text" id="addAuthorSurname" name="authorSurname">
+                <br>
+                <button type="submit">Submit</button>
+            </form>
+        `;
+        const formContainer = document.createElement('div');
+        formContainer.innerHTML = formHtml;
+        document.getElementById('content').appendChild(formContainer);
+
+        document.getElementById('addAuthorForm').addEventListener('submit', addAuthor);
+    }
+
+    function showDeleteDateForm(newsItem) {
+        const formHtml = `
+            <form id="deleteDateForm">
+                <input type="hidden" id="deleteDateNewsId" value="${newsItem.id}">
+                <button type="submit">Delete Date</button>
+            </form>
+        `;
+        const formContainer = document.createElement('div');
+        formContainer.innerHTML = formHtml;
+        document.getElementById('content').appendChild(formContainer);
+
+        document.getElementById('deleteDateForm').addEventListener('submit', deleteDate);
+    }
+
+    window.showNews = function() {
+        document.getElementById('content').innerHTML = `
+            <div id="newsOperations">
+                <div id="searchNews">
+                    <h2>Search News by ID</h2>
+                    <input type="text" id="newsIdInput" placeholder="Enter News ID">
+                    <button onclick="fetchNewsById()">Search</button>
+                    <h2>Search News by Name</h2>
+                    <input type="text" id="newsNameInput" placeholder="Enter News Name">
+                    <button onclick="fetchNewsByName()">Search</button>
+                </div>
+                <div id="createNews">
+                    <h2>Add New News</h2>
+                    <form id="addNewsForm">
+                        <label for="newsName">Name:</label>
+                        <input type="text" id="newsName" name="name" required>
+                        <br>
+                        <label for="newsAuthorName">Author Name:</label>
+                        <input type="text" id="newsAuthorName" name="authorName">
+                        <br>
+                        <label for="newsAuthorSurname">Author Surname:</label>
+                        <input type="text" id="newsAuthorSurname" name="authorSurname">
+                        <br>
+                        <label for="newsContent">Content:</label>
+                        <input type="text" id="newsContent" name="content" required>
+                        <br>
+                        <label for="newsDate">Date:</label>
+                        <input type="text" id="newsDate" name="date" required>
+                        <br>
+                        <button type="submit">Add News</button>
+                    </form>
+                </div>
+                <div id="deleteNews">
+                    <h2>Delete News by ID</h2>
+                    <input type="text" id="deleteNewsIdInput" placeholder="Enter News ID">
+                    <button onclick="deleteNewsById()">Delete</button>
+                </div>
+            </div>
+
+            <h1>News List</h1>
+            <table id="newsTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Author Name</th>
+                        <th>Author Surname</th>
+                        <th>Content</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be added here dynamically -->
+                </tbody>
+            </table>
+
+            <h2>News Details</h2>
+            <table id="newsDetailsTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Author Name</th>
+                        <th>Author Surname</th>
+                        <th>Content</th>
+                        <th>Date</th>
+                        <th>Options</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Row will be added here dynamically -->
+                </tbody>
+            </table>
+        `;
+
+        document.getElementById('addNewsForm').addEventListener('submit', addNews);
+        fetchNews().then(renderNews);
+    }
+
+    window.fetchNewsById = fetchNewsById;
+    window.fetchNewsByName = fetchNewsByName;
+    window.deleteNewsById = deleteNewsById;
+
+    document.addEventListener('DOMContentLoaded', showNews);
+</script>
+
+</body>
+</html>
