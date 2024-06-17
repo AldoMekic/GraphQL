@@ -17,7 +17,6 @@ const resolvers = {
             return newsData.find((newsItem) => newsItem.name === args.name);
         },
     },
-
     Mutation: {
         deleteNews(_, args) {
             newsData = newsData.filter((newsItem) => newsItem.id !== args.id);
@@ -66,7 +65,7 @@ const server = new ApolloServer({
 });
 
 const { url } = await startStandaloneServer(server, {
-    listen: { port: 4000, host: '0.0.0.0' },  // Listen on all interfaces
+    listen: { port: 4000 },
 });
 
 console.log(`Server ready at ${url}`);
