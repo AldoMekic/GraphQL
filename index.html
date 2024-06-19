@@ -30,16 +30,6 @@
 </head>
 <body>
 
-<nav>
-    <label><input type="checkbox" id="idCheckbox" checked>ID</label>
-    <label><input type="checkbox" id="nameCheckbox" checked>Name</label>
-    <label><input type="checkbox" id="authorNameCheckbox" checked>Author Name</label>
-    <label><input type="checkbox" id="authorSurnameCheckbox" checked>Author Surname</label>
-    <label><input type="checkbox" id="contentCheckbox" checked>Content</label>
-    <label><input type="checkbox" id="dateCheckbox" checked>Date</label>
-    <button onclick="refreshNews()">Refresh</button>
-</nav>
-
 <div id="content">
     <!-- Dynamic content will be loaded here -->
 </div>
@@ -47,116 +37,82 @@
 <script type="module">
     import queries from './queries.js'; // Ensure the path is correct
 
-    async function fetchNews(query) {
+    async function fetchNews() {
         const response = await fetch('/graphql', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ query: query })
+            body: JSON.stringify({ query: queries.newsQuery })
         });
 
         const result = await response.json();
         return result.data.news;
     }
 
-    function getSelectedQuery() {
-        const id = document.getElementById('idCheckbox').checked;
-        const name = document.getElementById('nameCheckbox').checked;
-        const authorName = document.getElementById('authorNameCheckbox').checked;
-        const authorSurname = document.getElementById('authorSurnameCheckbox').checked;
-        const content = document.getElementById('contentCheckbox').checked;
-        const date = document.getElementById('dateCheckbox').checked;
+    function refreshNews() {
+        const tableHeaders = document.querySelector('#newsTable thead tr');
+        const tableBody = document.querySelector('#newsTable tbody');
+        
+        tableHeaders.querySelectorAll('th').forEach((th, index) => {
+            const checkbox = document.querySelector(`#checkbox${index}`);
+            th.style.display = checkbox.checked ? '' : 'none';
+        });
 
-        if (id && name && authorName && authorSurname && content && date) return queries.newsQuery;
-        // Add more combinations as needed based on the requirement.
-        if (name && content) return queries.NameContentQuery;
-        // Repeat for all combinations
-
-        return queries.newsQuery; // default query if no specific combination found
-    }
-
-    async function refreshNews() {
-        const query = getSelectedQuery();
-        const news = await fetchNews(query);
-        renderNews(news);
+        tableBody.querySelectorAll('tr').forEach(row => {
+            row.querySelectorAll('td').forEach((td, index) => {
+                const checkbox = document.querySelector(`#checkbox${index}`);
+                td.style.display = checkbox.checked ? '' : 'none';
+            });
+        });
     }
 
     function renderNews(news) {
         const tableHeaders = document.querySelector('#newsTable thead tr');
         const tableBody = document.querySelector('#newsTable tbody');
-        tableHeaders.innerHTML = ''; // Clear any existing headers
-        tableBody.innerHTML = ''; // Clear any existing rows
+        
+        // Clear existing headers and rows
+        tableHeaders.innerHTML = '';
+        tableBody.innerHTML = '';
 
-        if (document.getElementById('idCheckbox').checked) {
-            const th = document.createElement('th');
-            th.textContent = 'ID';
-            tableHeaders.appendChild(th);
-        }
-        if (document.getElementById('nameCheckbox').checked) {
-            const th = document.createElement('th');
-            th.textContent = 'Name';
-            tableHeaders.appendChild(th);
-        }
-        if (document.getElementById('authorNameCheckbox').checked) {
-            const th = document.createElement('th');
-            th.textContent = 'Author Name';
-            tableHeaders.appendChild(th);
-        }
-        if (document.getElementById('authorSurnameCheckbox').checked) {
-            const th = document.createElement('th');
-            th.textContent = 'Author Surname';
-            tableHeaders.appendChild(th);
-        }
-        if (document.getElementById('contentCheckbox').checked) {
-            const th = document.createElement('th');
-            th.textContent = 'Content';
-            tableHeaders.appendChild(th);
-        }
-        if (document.getElementById('dateCheckbox').checked) {
-            const th = document.createElement('th');
-            th.textContent = 'Date';
-            tableHeaders.appendChild(th);
-        }
+        // Define column headers
+        const headers = ['ID', 'Name', 'Author Name', 'Author Surname', 'Content', 'Date'];
 
+        // Add headers
+        headers.forEach((header, index) => {
+            const th = document.createElement('th');
+            th.textContent = header;
+            tableHeaders.appendChild(th);
+
+            // Create checkboxes
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `checkbox${index}`;
+            checkbox.checked = true;
+            checkbox.onchange = refreshNews;
+            document.getElementById('navbar').appendChild(checkbox);
+            const label = document.createElement('label');
+            label.textContent = header;
+            label.htmlFor = checkbox.id;
+            document.getElementById('navbar').appendChild(label);
+        });
+
+        // Add rows
         news.forEach(newsItem => {
             const row = document.createElement('tr');
-            if (document.getElementById('idCheckbox').checked) {
-                const idCell = document.createElement('td');
-                idCell.textContent = newsItem.id;
-                row.appendChild(idCell);
-            }
-            if (document.getElementById('nameCheckbox').checked) {
-                const nameCell = document.createElement('td');
-                nameCell.textContent = newsItem.name;
-                row.appendChild(nameCell);
-            }
-            if (document.getElementById('authorNameCheckbox').checked) {
-                const authorNameCell = document.createElement('td');
-                authorNameCell.textContent = newsItem.authorName;
-                row.appendChild(authorNameCell);
-            }
-            if (document.getElementById('authorSurnameCheckbox').checked) {
-                const authorSurnameCell = document.createElement('td');
-                authorSurnameCell.textContent = newsItem.authorSurname;
-                row.appendChild(authorSurnameCell);
-            }
-            if (document.getElementById('contentCheckbox').checked) {
-                const contentCell = document.createElement('td');
-                contentCell.textContent = newsItem.content;
-                row.appendChild(contentCell);
-            }
-            if (document.getElementById('dateCheckbox').checked) {
-                const dateCell = document.createElement('td');
-                dateCell.textContent = newsItem.date;
-                row.appendChild(dateCell);
-            }
+            Object.values(newsItem).forEach(value => {
+                const td = document.createElement('td');
+                td.textContent = value;
+                row.appendChild(td);
+            });
             tableBody.appendChild(row);
         });
+
+        refreshNews();
     }
 
-    window.showNews = function() {
-        document.getElementById('content').innerHTML = `
+    window.showNews = async function() {
+        const content = `
             <div id="newsOperations">
                 <div id="searchNews">
                     <h2>Search News by ID</h2>
@@ -195,6 +151,9 @@
             </div>
 
             <h1>News List</h1>
+            <nav id="navbar">
+                <button onclick="refreshNews()">Refresh</button>
+            </nav>
             <table id="newsTable">
                 <thead>
                     <tr>
@@ -225,8 +184,11 @@
             </table>
         `;
 
+        document.getElementById('content').innerHTML = content;
         document.getElementById('addNewsForm').addEventListener('submit', addNews);
-        refreshNews();
+
+        const news = await fetchNews();
+        renderNews(news);
     }
 
     window.fetchNewsById = async function() {
