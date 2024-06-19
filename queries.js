@@ -11,6 +11,15 @@ const newsQuery = `
     }
 `;
 
+const NameContentQuery = `
+query NameContentQuery {
+  news {
+    name
+    content
+  }
+}
+`
+
 const newsByIdQuery = `
     query NewsByIdQuery($id: ID!) {
         newsById(id: $id) {
@@ -110,5 +119,6 @@ export default {
     deleteNewsMutation,
     updateNewsMutation,
     addAuthorMutation,
-    deleteDateMutation
+    deleteDateMutation,
+    NameContentQuery
 };

@@ -32,6 +32,7 @@
 
 <nav>
     <button onclick="showNews()">News</button>
+    <button onclick="showNameContent()">Name and Content</button> <!-- Add this button -->
 </nav>
 
 <div id="content">
@@ -48,6 +49,19 @@
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ query: queries.newsQuery })
+        });
+
+        const result = await response.json();
+        return result.data.news;
+    }
+
+    async function fetchNewsNameContent() {
+        const response = await fetch('/graphql', { // Updated to use /graphql endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: queries.NameContentQuery })
         });
 
         const result = await response.json();
@@ -437,6 +451,19 @@
                 </tbody>
             </table>
 
+            <h1>Name and Content List</h1>
+            <table id="nameContentTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Content</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be added here dynamically -->
+                </tbody>
+            </table>
+
             <h2>News Details</h2>
             <table id="newsDetailsTable">
                 <thead>
@@ -458,6 +485,29 @@
 
         document.getElementById('addNewsForm').addEventListener('submit', addNews);
         fetchNews().then(renderNews);
+    }
+
+    window.showNameContent = function() {
+        fetchNewsNameContent().then(renderNameContent);
+    }
+
+    function renderNameContent(news) {
+        const tableBody = document.getElementById('nameContentTable').querySelector('tbody');
+        tableBody.innerHTML = ''; // Clear any existing rows
+
+        news.forEach(newsItem => {
+            const row = document.createElement('tr');
+            const nameCell = document.createElement('td');
+            const contentCell = document.createElement('td');
+
+            nameCell.textContent = newsItem.name;
+            contentCell.textContent = newsItem.content;
+
+            row.appendChild(nameCell);
+            row.appendChild(contentCell);
+
+            tableBody.appendChild(row);
+        });
     }
 
     window.fetchNewsById = fetchNewsById;
